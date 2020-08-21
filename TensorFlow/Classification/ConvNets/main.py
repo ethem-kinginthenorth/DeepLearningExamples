@@ -100,6 +100,7 @@ if __name__ == "__main__":
             quant_delay = FLAGS.quant_delay,
             use_qdq = FLAGS.use_qdq,
             finetune_checkpoint = FLAGS.finetune_checkpoint,
+            do_profiling = FLAGS.do_profiling,
         )
 
     if FLAGS.mode in ["train_and_evaluate", 'evaluate', 'inference_benchmark']:

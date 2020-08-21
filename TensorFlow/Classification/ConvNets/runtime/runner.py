@@ -343,7 +343,8 @@ class Runner(object):
         quant_delay=0,
         finetune_checkpoint=None,
         use_final_conv=False,
-        use_qdq=False
+        use_qdq=False,
+        do_profiling=False
     ):
 
         if iter_unit not in ["epoch", "batch"]:
@@ -425,6 +426,11 @@ class Runner(object):
 
         training_hooks.append(hooks.PrefillStagingAreasHook())
         training_hooks.append(hooks.TrainingPartitionHook())
+
+        if do_profiling is True:
+            profiling_hook = tf.train.ProfilerHook(save_steps=4, output_dir='/raid/ethem/temp')
+            training_hooks.append( profiling_hook)
+
 
         estimator_params = {
             'batch_size': batch_size,

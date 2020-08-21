@@ -272,6 +272,14 @@ def parse_cmdline(available_arch):
     )
 
     _add_bool_argument(
+            parser=p,
+            name="do_profiling",
+            default=False,
+            required=False,
+            help="Enable profiling by adding a profiling hook to the training."
+            )
+
+    _add_bool_argument(
         parser=p, name="use_cosine_lr", default=False, required=False, help="Use cosine learning rate schedule."
     )
 
