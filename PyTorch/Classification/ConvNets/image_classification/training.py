@@ -38,6 +38,9 @@ from . import resnet as models
 from . import utils
 import dllogger
 
+import torch.cuda.profiler as profiler
+import pyprof
+
 try:
     from apex.parallel import DistributedDataParallel as DDP
     from apex.fp16_utils import *
@@ -278,6 +281,7 @@ def train(
     prof=-1,
     batch_size_multiplier=1,
     register_metrics=True,
+    do_pyprof=False
 ):
 
     if register_metrics and logger is not None:
@@ -336,11 +340,23 @@ def train(
         lr_scheduler(optimizer, i, epoch)
         data_time = time.time() - end
 
-        optimizer_step = ((i + 1) % batch_size_multiplier) == 0
-        loss = step(input, target, optimizer_step=optimizer_step)
+
+        if do_pyprof is True and i == 5:
+            with torch.autograd.profiler.emit_nvtx():  
+                profiler.start()
+                print("pyprof started......")
+                optimizer_step = ((i + 1) % batch_size_multiplier) == 0
+                loss = step(input, target, optimizer_step=optimizer_step)
+                profiler.stop()
+                print("pyprof stopped......")
+        else:
+            optimizer_step = ((i + 1) % batch_size_multiplier) == 0
+            loss = step(input, target, optimizer_step=optimizer_step)
 
         it_time = time.time() - end
 
+        #logger.log_metric("iter no", i)
+        print("iter_no", str(i))
         if logger is not None:
             logger.log_metric("train.loss", to_python_float(loss), bs)
             logger.log_metric("train.compute_ips", calc_ips(bs, it_time - data_time))
@@ -509,6 +525,7 @@ def train_loop(
     save_checkpoints=True,
     checkpoint_dir="./",
     checkpoint_filename="checkpoint.pth.tar",
+    do_pyprof=False
 ):
 
     prec1 = -1
@@ -530,6 +547,7 @@ def train_loop(
                 prof=prof,
                 register_metrics=epoch == start_epoch,
                 batch_size_multiplier=batch_size_multiplier,
+                do_pyprof=do_pyprof
             )
 
         if not skip_validation:

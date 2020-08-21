@@ -45,6 +45,8 @@ import torch.utils.data
 import torch.utils.data.distributed
 import torchvision.transforms as transforms
 import torchvision.datasets as datasets
+import torch.cuda.profiler as profiler
+import pyprof
 
 try:
     from apex.parallel import DistributedDataParallel as DDP
@@ -244,6 +246,12 @@ def add_parser_arguments(parser):
         "--amp",
         action="store_true",
         help="Run model AMP (automatic mixed precision) mode.",
+    )
+
+    parser.add_argument(
+        "--pyprof",
+        action="store_true",
+        help="Run model with pyprof profiling, it extracts only 5th iteration"
     )
 
     parser.add_argument(
@@ -489,6 +497,9 @@ def main(args):
     elif args.lr_schedule == "linear":
         lr_policy = lr_linear_policy(args.lr, args.warmup, args.epochs, logger=logger)
 
+    if args.pyprof:
+        pyprof.init()
+
     if args.amp:
         model_and_loss, optimizer = amp.initialize(
             model_and_loss,
@@ -524,6 +535,7 @@ def main(args):
         save_checkpoints=args.save_checkpoints and not args.evaluate,
         checkpoint_dir=args.workspace,
         checkpoint_filename=args.checkpoint_filename,
+        do_pyprof=args.pyprof
     )
     exp_duration = time.time() - exp_start_time
     if not torch.distributed.is_initialized() or torch.distributed.get_rank() == 0:
