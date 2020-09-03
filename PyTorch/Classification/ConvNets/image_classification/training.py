@@ -232,10 +232,19 @@ def lr_exponential_policy(
 def get_train_step(
     model_and_loss, optimizer, fp16, use_amp=False, batch_size_multiplier=1
 ):
-    def _step(input, target, optimizer_step=True):
+    def _step(input, target, optimizer_step=True, do_pyprof=False):
         input_var = Variable(input)
         target_var = Variable(target)
-        loss, output = model_and_loss(input_var, target_var)
+
+        if do_pyprof is True:
+            with torch.autograd.profiler.emit_nvtx():
+                profiler.start()
+                print("pyprof started......")
+                loss, output = model_and_loss(input_var, target_var)
+                profiler.stop()
+                print("pyprof stopped......")
+        else:
+            loss, output = model_and_loss(input_var, target_var)
         if torch.distributed.is_initialized():
             reduced_loss = utils.reduce_tensor(loss.data)
         else:
@@ -341,16 +350,19 @@ def train(
         data_time = time.time() - end
 
 
+        #if do_pyprof is True and i == 5:
+        #    with torch.autograd.profiler.emit_nvtx():  
+        #        profiler.start()
+        #        print("pyprof started......")
+        #        optimizer_step = ((i + 1) % batch_size_multiplier) == 0
+        #        loss = step(input, target, optimizer_step=optimizer_step)
+        #        profiler.stop()
+        #        print("pyprof stopped......")
+        #else:
+        optimizer_step = ((i + 1) % batch_size_multiplier) == 0
         if do_pyprof is True and i == 5:
-            with torch.autograd.profiler.emit_nvtx():  
-                profiler.start()
-                print("pyprof started......")
-                optimizer_step = ((i + 1) % batch_size_multiplier) == 0
-                loss = step(input, target, optimizer_step=optimizer_step)
-                profiler.stop()
-                print("pyprof stopped......")
+            loss = step(input, target, optimizer_step=optimizer_step, do_pyprof=do_pyprof)
         else:
-            optimizer_step = ((i + 1) % batch_size_multiplier) == 0
             loss = step(input, target, optimizer_step=optimizer_step)
 
         it_time = time.time() - end
