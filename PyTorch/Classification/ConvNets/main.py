@@ -498,7 +498,7 @@ def main(args):
         lr_policy = lr_linear_policy(args.lr, args.warmup, args.epochs, logger=logger)
 
     if args.pyprof:
-        pyprof.init()
+        pyprof.init(enable_function_stack=True)
 
     if args.amp:
         model_and_loss, optimizer = amp.initialize(
